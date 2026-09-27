@@ -5,6 +5,8 @@
 
 🌐 **在线预览与功能展示**：https://yabin01.github.io/TradeMind/
 📦 **下载 Windows 便携版**（免安装 Node 与数据库）：[Releases](https://github.com/yabin01/TradeMind/releases/latest)
+💙 **捐赠支持**：https://yabin01.github.io/TradeMind/donate.html
+🤝 **交易所邀请链接**（通过链接注册费率不变）：https://yabin01.github.io/TradeMind/invite.html
 
 ## 技术栈
 
