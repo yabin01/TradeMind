@@ -8,6 +8,13 @@ dist/
 .env.*.local
 coverage/
 
+# 便携构建时使用的隔离输出目录与临时目录
+.next-portable*/
+.next-old-*/
+deploy-tmp/
+release/
+*.zip
+
 # 本地便携运行时与数据库（体积大，且可能含真实数据，绝不入库）
 .pg/
 pgdata/
