@@ -3,6 +3,9 @@
 > AI Trading Journal & Analytics Platform — 智能交易日志、交易分析、策略分析与 AI Trading Coach。
 > 非交易所、非 Broker、不托管资产。参考 UltraTrader 公开产品结构，不复制其品牌/源码/视觉资产。
 
+🌐 **在线预览与功能展示**：https://yabin01.github.io/TradeMind/
+📦 **下载 Windows 便携版**（免安装 Node 与数据库）：[Releases](https://github.com/yabin01/TradeMind/releases/latest)
+
 ## 技术栈
 
 - **Monorepo**：pnpm workspaces + Turborepo
