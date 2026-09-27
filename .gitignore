@@ -1,0 +1,36 @@
+node_modules/
+dist/
+.next/
+.turbo/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+coverage/
+
+# 本地便携运行时与数据库（体积大，且可能含真实数据，绝不入库）
+.pg/
+pgdata/
+*.dump
+
+# 真实交易/账户数据备份，绝不入库
+.backup-trades-*.json
+*.jsonl
+
+# 构建与运行日志
+*.log
+*.out
+
+# 临时文件
+_tmp_*
+*.tmp
+
+# 打包产物
+release/
+*.zip
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

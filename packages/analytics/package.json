@@ -1,0 +1,17 @@
+{
+  "name": "@trademind/analytics",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node dist/test/counterfactual.selftest.js && node dist/test/rules.selftest.js && node dist/test/advanced.selftest.js && node dist/test/diary.selftest.js"
+  },
+  "dependencies": {
+    "@trademind/trading-core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

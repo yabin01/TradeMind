@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 主题 token（RGB 通道形式，供 Tailwind 的 rgb(var(--x) / <alpha-value>) 使用）
+ * 由 lib/appearance.ts 在运行时覆写 --pnl-up / --pnl-down。
+ */
+:root,
+[data-theme='dark'] {
+  --bg: 11 15 23; /* #0b0f17 */
+  --surface: 17 24 39; /* #111827 */
+  --panel: 15 21 34; /* #0f1522 */
+  --line: 31 41 55; /* #1f2937 */
+  --pnl-up: 239 68 68; /* 红涨 */
+  --pnl-down: 34 197 94; /* 绿跌 */
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: 243 245 249; /* #f3f5f9 */
+  --surface: 255 255 255;
+  --panel: 249 250 252; /* #f9fafc */
+  --line: 221 227 236; /* #dde3ec */
+  color-scheme: light;
+}
+
+body {
+  @apply bg-bg text-slate-200 antialiased;
+}
+
+/* ── 亮色主题适配 ──
+   组件里大量使用 text-slate-xxx / emerald / amber 等固定色阶（写的时候以暗色为准），
+   这里做一次集中重映射，避免逐个组件改。 */
+[data-theme='light'] body {
+  @apply text-slate-800;
+}
+[data-theme='light'] .text-slate-200 {
+  color: #0f172a;
+}
+[data-theme='light'] .text-slate-300 {
+  color: #1e293b;
+}
+[data-theme='light'] .text-slate-400 {
+  color: #475569;
+}
+[data-theme='light'] .text-slate-500 {
+  color: #64748b;
+}
+[data-theme='light'] .text-slate-600 {
+  color: #94a3b8;
+}
+[data-theme='light'] .text-slate-100,
+[data-theme='light'] .text-white {
+  color: #0f172a;
+}
+[data-theme='light'] .placeholder\:text-slate-600::placeholder {
+  color: #94a3b8;
+}
+[data-theme='light'] .text-emerald-200,
+[data-theme='light'] .text-emerald-300,
+[data-theme='light'] .text-emerald-400 {
+  color: #047857;
+}
+[data-theme='light'] .bg-emerald-500\/20 {
+  background-color: rgb(209 250 229);
+}
+[data-theme='light'] .border-emerald-500\/40 {
+  border-color: rgb(110 231 183);
+}
+[data-theme='light'] .text-amber-300,
+[data-theme='light'] .text-amber-400 {
+  color: #b45309;
+}
+[data-theme='light'] .bg-amber-500\/10,
+[data-theme='light'] .bg-amber-500\/15 {
+  background-color: rgb(254 243 199);
+}
+[data-theme='light'] .text-sky-400 {
+  color: #0369a1;
+}
+[data-theme='light'] .bg-slate-700\/60 {
+  background-color: rgb(226 232 240);
+}
+[data-theme='light'] .bg-slate-500\/15 {
+  background-color: rgb(241 245 249);
+}
+[data-theme='light'] .border-slate-500,
+[data-theme='light'] .hover\:border-slate-500:hover {
+  border-color: rgb(148 163 184);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded bg-line;
+}

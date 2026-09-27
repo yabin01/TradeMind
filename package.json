@@ -1,0 +1,22 @@
+{
+  "name": "trademind",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "workers/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev:api": "pnpm --filter @trademind/api dev",
+    "dev:web": "pnpm --filter @trademind/web dev",
+    "test": "turbo run test",
+    "db:push": "pnpm --filter @trademind/database db:push",
+    "db:seed": "pnpm --filter @trademind/database seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.5.4"
+  }
+}
