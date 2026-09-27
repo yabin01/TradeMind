@@ -5,6 +5,7 @@
 
 🌐 **在线预览与功能展示**：https://yabin01.github.io/TradeMind/
 📦 **下载 Windows 便携版**（免安装 Node 与数据库）：[Releases](https://github.com/yabin01/TradeMind/releases/latest)
+📄 **许可证**：[MIT](LICENSE) —— 可自由使用、修改、分发、商用
 💙 **捐赠支持**：https://yabin01.github.io/TradeMind/donate.html
 🤝 **交易所邀请链接**（通过链接注册费率不变）：https://yabin01.github.io/TradeMind/invite.html
 
@@ -95,3 +96,17 @@ docker/             PG(TimescaleDB) + Redis compose
 - 🔜 Phase 3：LLM AI Coach（规则引擎已预置事实层与 Citation 结构）
 - 🔜 Phase 4：Trade Replay（Lightweight Charts）
 - 🔜 Phase 5：ChanLun Analytics（schema 已预留 `chanlun` 字段）
+
+## 许可证
+
+[MIT](LICENSE) © 2026 yabin01
+
+可以自由地使用、复制、修改、合并、发布、分发、再授权与销售，唯一的要求是：在你分发本软件（或其重要部分）时，保留版权声明与这份许可声明。软件按「现状」提供，不含任何形式的担保。
+
+任何人都可以用它做任何事，包括商业用途 —— 包括把它打包成付费产品。这正是选择 MIT 而不是 copyleft 协议的原因。
+
+## 免责声明
+
+TradeMind 是一款个人交易记录与统计分析工具，**不是交易所、不是经纪商、不提供投资建议，也不托管任何资产**。
+它只读取你主动配置的历史成交数据用于分析，没有任何下单或转账功能。
+所有分析结论均基于你自己的历史数据，不构成任何投资或交易建议。交易有风险，决策请自行判断。
