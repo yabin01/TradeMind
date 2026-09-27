@@ -1,24 +1,49 @@
 import type { UnifiedTrade } from '@trademind/trading-core';
 
+declare global {
+  interface Window {
+    /** 服务端在运行时注入的真实 API 端口（便携包会自动避让被占用的端口） */
+    __TM_API_PORT__?: string | number;
+  }
+}
+
 /**
- * API 根地址解析（本机 / 局域网 / 手机通用）：
- * 1. 若配置了 NEXT_PUBLIC_API_URL（apps/web/.env.local 或启动时注入）→ 用它，
- *    适合「反向代理把前后端放同一域名下」的正式部署（如 NEXT_PUBLIC_API_URL=/api）。
- * 2. 否则**跟随当前页面的 host**，端口取 NEXT_PUBLIC_API_PORT（默认 4000）。
+ * API 根地址解析（本机 / 局域网 / 手机 / 便携包通用），按优先级：
+ * 1. NEXT_PUBLIC_API_URL —— 反向代理把前后端放同一域名下时使用。
+ * 2. window.__TM_API_PORT__ —— 服务端在**运行时**注入的真实端口。
+ *    便携包启动器会自动避让 3000/4000 等被占用的端口，所以端口不能写死在构建产物里
+ *    （NEXT_PUBLIC_* 会被 Next 在构建期内联成常量，改不动）。
+ * 3. 跟随当前页面的 host + NEXT_PUBLIC_API_PORT（默认 4000）。
  *    这样手机用 http://192.168.x.x:3000 打开时，API 会自动指向 192.168.x.x:4000，
  *    而不是手机自己的 localhost（这是手机打不开的头号原因）。
  */
 function resolveApiBase(): string {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (configured) return configured.replace(/\/+$/, '');
-  const port = process.env.NEXT_PUBLIC_API_PORT?.trim() || '4000';
+
   if (typeof window !== 'undefined') {
+    const injected = window.__TM_API_PORT__;
+    const port =
+      injected !== undefined && injected !== null && String(injected).trim()
+        ? String(injected).trim()
+        : process.env.NEXT_PUBLIC_API_PORT?.trim() || '4000';
     return `${window.location.protocol}//${window.location.hostname}:${port}/api`;
   }
+
+  // 服务端渲染：运行时环境变量优先（standalone 下不会被构建期内联）
+  const port =
+    process.env.TRADEMIND_API_PORT?.trim() ||
+    process.env.NEXT_PUBLIC_API_PORT?.trim() ||
+    '4000';
   return `http://localhost:${port}/api`;
 }
 
-const API_BASE = resolveApiBase();
+// 延迟解析：确保首屏注入脚本已经执行完毕
+let cachedApiBase: string | null = null;
+function getApiBase(): string {
+  if (cachedApiBase === null) cachedApiBase = resolveApiBase();
+  return cachedApiBase;
+}
 
 export function getWorkspaceId(): string {
   if (typeof window === 'undefined') return '22222222-2222-2222-2222-222222222222';
@@ -30,7 +55,7 @@ export function setWorkspaceId(id: string): void {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${getApiBase()}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
