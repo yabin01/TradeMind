@@ -8,6 +8,7 @@
 📄 **许可证**：[MIT](LICENSE) —— 可自由使用、修改、分发、商用
 💙 **捐赠支持**：https://yabin01.github.io/TradeMind/donate.html
 🤝 **交易所邀请链接**（通过链接注册费率不变）：https://yabin01.github.io/TradeMind/invite.html
+📱 **安卓端（独立仓库）**：[trademind-mobile](https://github.com/yabin01/trademind-mobile) —— 同款离线优先交易日志，可装到手机，无需 Google Play
 
 ## 技术栈
 
