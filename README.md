@@ -4,9 +4,13 @@
 > 非交易所、非 Broker、不托管资产。参考 UltraTrader 公开产品结构，不复制其品牌/源码/视觉资产。
 
 🌐 **在线预览与功能展示**：https://yabin01.github.io/TradeMind/
+
 📦 **下载 Windows 便携版**（免安装 Node 与数据库）：[Releases](https://github.com/yabin01/TradeMind/releases/latest)
+
 📄 **许可证**：[MIT](LICENSE) —— 可自由使用、修改、分发、商用
+
 💙 **捐赠支持**：https://yabin01.github.io/TradeMind/donate.html
+
 🤝 **交易所邀请链接**（通过链接注册费率不变）：https://yabin01.github.io/TradeMind/invite.html
 📱 **安卓端（独立仓库）**：[trademind-mobile](https://github.com/yabin01/trademind-mobile) —— 同款离线优先交易日志，可装到手机，无需 Google Play
 
