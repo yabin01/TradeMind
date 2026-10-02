@@ -182,6 +182,30 @@ export function TradeCandleChart({
   // 外观变化（明暗主题 / 涨跌配色）后需要重建图表，因为颜色是「画」进去的
   const themeKey = `${appearance.theme}|${appearance.pnlUp}|${appearance.pnlDown}`;
 
+  /**
+   * 示例/合成数据的成交价可能远离真实行情（本包的示例工作区就是这样），
+   * 这时开仓/平仓价虚线会落到可视区之外：图上什么都不显示，用户会以为图坏了。
+   * 所以先判断成交价是否落在持仓行情的合理区间内，只画「看得见」的虚线，
+   * 并在图例下方说明原因 —— 既不误导，也不留下一张「少了两条线」的图。
+   */
+  const { entryLineVisible, exitLineVisible, priceOffChart } = (() => {
+    if (candles.length === 0) {
+      return { entryLineVisible: true, exitLineVisible: true, priceOffChart: false };
+    }
+    let hi = -Infinity;
+    let lo = Infinity;
+    for (const c of candles) {
+      if (c.high > hi) hi = c.high;
+      if (c.low < lo) lo = c.low;
+    }
+    // 20% 区间 + 0.5% 绝对量：真实成交价永远落在持仓区间附近，留这点余量足够
+    const pad = Math.max((hi - lo) * 0.2, Math.abs(hi) * 0.005);
+    const inside = (p: number | null | undefined) => p == null || (p <= hi + pad && p >= lo - pad);
+    const e = inside(entry?.price);
+    const x = inside(exit?.price);
+    return { entryLineVisible: e, exitLineVisible: x, priceOffChart: !e || !x };
+  })();
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el || !ok || !entry) return;
@@ -296,15 +320,17 @@ export function TradeCandleChart({
     createSeriesMarkers(series, markers);
 
     // 价格线：把开仓价与平仓价横着拉一条虚线，方便直接比高低
-    series.createPriceLine({
-      price: entry.price,
-      color: rgb(entryColor),
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: '开仓价',
-    });
-    if (exit) {
+    if (entryLineVisible) {
+      series.createPriceLine({
+        price: entry.price,
+        color: rgb(entryColor),
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: '开仓价',
+      });
+    }
+    if (exit && exitLineVisible) {
       series.createPriceLine({
         price: exit.price,
         color: rgb(exitColor),
@@ -326,7 +352,7 @@ export function TradeCandleChart({
       chart = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ok, tradeId, themeKey, direction, netPnl, candles, entry, exit]);
+  }, [ok, tradeId, themeKey, direction, netPnl, candles, entry, exit, entryLineVisible, exitLineVisible]);
 
   const legend = useMemo(() => {
     if (!ok || !entry) return null;
@@ -428,6 +454,12 @@ export function TradeCandleChart({
 
           {data.warnings && data.warnings.length > 0 ? (
             <p className="mt-2 text-xs text-amber-400">{data.warnings.join(' ')}</p>
+          ) : null}
+          {priceOffChart ? (
+            <p className="mt-2 text-xs text-amber-400">
+              本笔的成交价明显落在该时段行情之外（示例工作区里的合成数据常这样），图上略去了开仓/平仓价虚线，
+              以免出现一条跑出画面的线；K 线本身是交易所的真实历史行情。
+            </p>
           ) : null}
           <p className="mt-1 text-xs text-slate-600">
             时间轴为北京时间（UTC+8）；开仓/平仓箭头与虚线为该笔的成交点。
