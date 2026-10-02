@@ -102,6 +102,54 @@ export interface TradeCandleInput {
 const OKX_SWAP = /^[A-Z0-9]{1,20}-(USDT|USDC|USD|BTC|ETH)-SWAP$/;
 const OKX_ANY = /^[A-Z0-9]{1,20}-(USDT|USDC|USD|BTC|ETH)(-SWAP)?$/;
 
+/**
+ * 计价币按长度降序，拆 ETHUSDT 这类「归一化写法」时才不会把 ETHBTC 拆错。
+ * 长在前：USD 必须在 USDT/USDC 之后匹配。
+ */
+const QUOTES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH'];
+
+/**
+ * 把 BASEQUOTE（如 ETHUSDT）拆成 { base, quote }，拆不出来返回 null。
+ * 交易库里 symbol 可能是归一化写法（CSV 导入 / 部分同步路径），
+ * 而交易所公开行情接口要的是各家的规范代码，所以必须先拆再拼。
+ */
+function splitPair(symbol: string): { base: string; quote: string } | null {
+  const s = symbol.trim().toUpperCase();
+  for (const q of QUOTES) {
+    if (s.length > q.length && s.endsWith(q)) return { base: s.slice(0, s.length - q.length), quote: q };
+  }
+  return null;
+}
+
+/**
+ * OKX 的 instId 候选：永续在前、现货在后。
+ * 本产品以合约为主，所以先试 BASE-QUOTE-SWAP；拿不到 K 线（比如是现货成交、
+ * 或该合约从没上过永续）再退到 BASE-QUOTE。回退命中率比只认一种写法高得多。
+ */
+export function okxCodes(symbol: string): string[] {
+  const s = symbol.trim().toUpperCase();
+  if (OKX_ANY.test(s)) return [s];
+  const pair = splitPair(s);
+  if (!pair) return [];
+  return [`${pair.base}-${pair.quote}-SWAP`, `${pair.base}-${pair.quote}`];
+}
+
+/** Hyperliquid 只认基础币（ETH / BTC / SOL…），不带计价币 */
+function hlCoins(symbol: string): string[] {
+  const s = symbol.trim().toUpperCase().replace(/-SWAP$/, '');
+  if (s.includes('-')) return [s.split('-')[0]];
+  const pair = splitPair(s);
+  return [(pair ? pair.base : s) || s];
+}
+
+/** Binance 现货是 BASEQUOTE 连写（ETHUSDT） */
+function binanceCodes(symbol: string): string[] {
+  const s = symbol.trim().toUpperCase().replace(/-SWAP$/, '').replace(/-/g, '');
+  const pair = splitPair(s);
+  if (!pair) return s ? [s] : [];
+  return [`${pair.base}${pair.quote}`];
+}
+
 /** 目标根数：低于此数不切更大周期 */
 const TARGET_CANDLES = 800;
 /** 硬上限：超过就拒绝，避免一次拉几千根把前端拖死 */
@@ -283,26 +331,42 @@ function snapTime(ms: number, bar: CandleBar, firstTs: number, lastTs: number): 
   return snapped;
 }
 
-/** 每个交易所对应的「本所标的代码」 */
-function venueSymbol(exchange: string, symbol: string): { venue: string; code: string; supported: boolean; hint: string | null } {
+/** 每个交易所对应的「本所标的名」候选列表 */
+function venueCandidates(
+  exchange: string,
+  symbol: string,
+): { venue: string; codes: string[]; supported: boolean; hint: string | null } {
   const upper = exchange.toUpperCase();
   if (upper === 'OKX') {
     // 已下架合约形如 ETH-USDT-SWAP-OFF20260702-2，历史 K 线通常也拿不到了
-    const delisted = /-OFF\d{8}/.test(symbol);
+    if (/-OFF\d{8}/.test(symbol)) {
+      return { venue: 'OKX', codes: [], supported: false, hint: '该合约已下架，交易所不再提供历史 K 线' };
+    }
+    const codes = okxCodes(symbol);
     return {
       venue: 'OKX',
-      code: symbol,
-      supported: OKX_ANY.test(symbol) && !delisted,
-      hint: delisted ? '该合约已下架，交易所不再提供历史 K 线' : null,
+      codes,
+      supported: codes.length > 0,
+      hint:
+        codes.length > 0
+          ? null
+          : `无法识别 OKX 合约代码「${symbol}」，需要 BASE-QUOTE（现货）或 BASE-QUOTE-SWAP（永续）这种写法`,
     };
   }
   if (upper === 'HYPERLIQUID') {
-    return { venue: 'Hyperliquid', code: symbol.split('-')[0], supported: true, hint: null };
+    const coins = hlCoins(symbol);
+    return { venue: 'Hyperliquid', codes: coins, supported: coins.length > 0, hint: null };
   }
   if (upper === 'BINANCE') {
-    return { venue: 'Binance', code: symbol.replace(/-SWAP$/, '').replace(/-/g, ''), supported: true, hint: null };
+    const codes = binanceCodes(symbol);
+    return { venue: 'Binance', codes, supported: codes.length > 0, hint: null };
   }
-  return { venue: upper, code: symbol, supported: false, hint: '当前只支持 OKX / Hyperliquid / Binance 的公开行情' };
+  return {
+    venue: upper,
+    codes: [],
+    supported: false,
+    hint: '当前只支持 OKX / Hyperliquid / Binance 的公开行情',
+  };
 }
 
 // ---------------------------------------------------------------- 缓存
@@ -333,6 +397,8 @@ const MIN_HOLDING_BARS = 8;
 
 interface Attempt {
   bar: CandleBar;
+  /** 实际取到数据的那个「本所代码」（可能是候选列表里的第二个） */
+  code: string;
   candles: CandlePoint[];
   start: number;
   end: number;
@@ -344,7 +410,7 @@ export async function getTradeCandles(
   trade: TradeCandleInput,
   requestedBar?: string,
 ): Promise<TradeCandlesPayload> {
-  const { venue, code, supported, hint } = venueSymbol(trade.exchange, trade.symbol);
+  const { venue, codes, supported, hint } = venueCandidates(trade.exchange, trade.symbol);
   const openMs = trade.openTime.getTime();
   const closeMs = trade.closeTime ? trade.closeTime.getTime() : Date.now();
   const isOpen = !trade.closeTime;
@@ -394,7 +460,7 @@ export async function getTradeCandles(
   const startMs = alignFloor(openMs - padMs, BAR_MS[bar]);
   const endMs = alignFloor(closeMs + padMs, BAR_MS[bar]) + BAR_MS[bar];
 
-  const key = cacheKey(venue, code, bar, startMs, endMs);
+  const key = cacheKey(venue, codes[0], bar, startMs, endMs);
   const hit = cache.get(key);
   const ttl = isOpen ? 45_000 : 30 * 60_000;
   if (hit && Date.now() - hit.at < ttl) return hit.promise;
@@ -408,7 +474,7 @@ export async function getTradeCandles(
       ...CANDLE_BARS.filter((b) => BAR_MS[b] > BAR_MS[bar] && barOptions.includes(b)),
     ];
 
-    const fetchBar = (target: CandleBar, s: number, e: number): Promise<CandlePoint[]> => {
+    const fetchBar = (target: CandleBar, code: string, s: number, e: number): Promise<CandlePoint[]> => {
       if (venue === 'OKX') return okxCandles(code, target, s, e, 140);
       if (venue === 'Hyperliquid') return hyperliquidCandles(code, target, s, e);
       return binanceCandles(code, target, s, e);
@@ -426,20 +492,32 @@ export async function getTradeCandles(
       );
       const s = alignFloor(openMs - padMs, BAR_MS[candidate]);
       const e = alignFloor(closeMs + padMs, BAR_MS[candidate]) + BAR_MS[candidate];
-      let candles: CandlePoint[];
-      try {
-        candles = await fetchBar(candidate, s, e);
-      } catch (err) {
-        firstError ??= err as Error;
-        continue;
+
+      // 同一个周期下再按候选代码逐个试：ETHUSDT 可能对应 ETH-USDT-SWAP，
+      // 也可能只有现货 ETH-USDT 有历史；哪个先返回数据就用哪个。
+      let candles: CandlePoint[] = [];
+      let codeUsed = codes[0];
+      for (const code of codes) {
+        try {
+          candles = await fetchBar(candidate, code, s, e);
+        } catch (err) {
+          firstError ??= err as Error;
+          candles = [];
+          continue;
+        }
+        if (candles.length > 0) {
+          codeUsed = code;
+          break;
+        }
       }
+
       tried.push({ bar: candidate, count: candles.length });
       if (candles.length === 0) continue;
 
       const inHolding = candles.filter(
         (c) => c.time * 1000 >= openMs - BAR_MS[candidate] && c.time * 1000 <= closeMs + BAR_MS[candidate],
       );
-      const attempt: Attempt = { bar: candidate, candles, start: s, end: e, inHolding };
+      const attempt: Attempt = { bar: candidate, code: codeUsed, candles, start: s, end: e, inHolding };
       if (inHolding.length >= MIN_HOLDING_BARS) {
         picked = attempt;
         break;
@@ -474,6 +552,10 @@ export async function getTradeCandles(
         `${BAR_LABEL[bar]}周期在 ${venue} 已查不到这段历史（该所细粒度 K 线保留期有限），已自动改用 ${BAR_LABEL[usedBar]}。`,
       );
     }
+    // 用候选代码里的第二个取到数据时说明一下，避免用户以为拿错了标的
+    if (chosen.code !== codes[0]) {
+      warnings.push(`这笔记录的标的写作「${trade.symbol}」，${venue} 上按「${chosen.code}」取到了行情（优先试的 ${codes[0]} 没有数据）。`);
+    }
 
     const firstTs = candles[0].time;
     const lastTs = candles[candles.length - 1].time;
@@ -499,7 +581,7 @@ export async function getTradeCandles(
     return {
       available: true,
       venue,
-      instId: code,
+      instId: chosen.code,
       bar: usedBar,
       barOptions,
       autoBar,
@@ -547,6 +629,9 @@ export function extremesOf(candles: { high: number; low: number }[]): { high: nu
 /**
  * 拉取 [startMs, endMs) 区间的 1m K 线（MAE/MFE 回填脚本用）。
  * OKX 每页 100 根，250 页 ≈ 25000 根 ≈ 17 天，足够覆盖绝大多数持仓。
+ *
+ * 传进来的 instId 可能是归一化写法（ETHUSDT），先按候选代码逐个试；
+ * 某个代码直接空手而归时 okxCandles 只发一次请求就退出，所以代价可控。
  */
 export async function fetchCandles1m(
   instId: string,
@@ -554,8 +639,11 @@ export async function fetchCandles1m(
   endMs: number,
   opts: { paceMs?: number; maxRequests?: number } = {},
 ): Promise<CandlePoint[]> {
-  if (!OKX_ANY.test(instId)) return [];
-  return okxCandles(instId, '1m', startMs, endMs, opts.paceMs ?? 140, opts.maxRequests ?? 250);
+  for (const code of okxCodes(instId)) {
+    const rows = await okxCandles(code, '1m', startMs, endMs, opts.paceMs ?? 140, opts.maxRequests ?? 250);
+    if (rows.length > 0) return rows;
+  }
+  return [];
 }
 
 export { OKX_SWAP, OKX_ANY };
