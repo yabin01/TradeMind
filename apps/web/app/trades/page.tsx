@@ -288,7 +288,9 @@ export default function TradesPage() {
   const { data: probe } = useQuery({
     queryKey: ['trades-no-time-total', noTimeFilter],
     queryFn: () => getTrades(noTimeFilter, 1, 1),
-    enabled: hasTimeWindow && shownTotal < 25,
+    // 注意 data != null：shownTotal 在首屏数据未到位时读到的是兜底的 0，
+    // 若不判 data 就会每次进页面都白发一次这个反查请求（拿到的结果也没用处）。
+    enabled: hasTimeWindow && data != null && shownTotal < 25,
     staleTime: 30_000,
   });
   const hiddenByTime = hasTimeWindow && probe?.total != null ? Math.max(0, probe.total - shownTotal) : 0;

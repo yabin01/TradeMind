@@ -88,7 +88,11 @@ export interface TradeListResult {
 
 /** 拉取（可分页）交易列表 */
 export function getTrades(filter: object, page = 1, pageSize = 50): Promise<TradeListResult> {
-  return api<TradeListResult>(`/trades${filterQuery(filter)}&page=${page}&pageSize=${pageSize}`);
+  const q = filterQuery(filter);
+  // filterQuery 在没有筛选条件时返回空串，此时必须自己补上 '?'，
+  // 否则会拼出 `/trades&page=1&pageSize=1` 这种缺 '?' 的地址，服务端匹配不到路由 → 404
+  const sep = q ? '&' : '?';
+  return api<TradeListResult>(`/trades${q}${sep}page=${page}&pageSize=${pageSize}`);
 }
 
 /** 单笔更新（归档 / 标签 / 笔记 等白名单字段） */
