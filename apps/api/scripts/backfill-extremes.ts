@@ -9,7 +9,7 @@
  */
 import { and, desc, eq, gte, isNotNull } from 'drizzle-orm';
 import { createDb, trades as tradesTable } from '@trademind/database';
-import { fetchCandles1m, extremesOf, type Candle } from '../src/connections/okx-candles';
+import { fetchCandles1m, extremesOf, type CandlePoint } from '../src/market/candles';
 
 const args = process.argv.slice(2);
 const days = Number(args.find((a) => a.startsWith('--days='))?.slice(7) ?? 90);
@@ -55,7 +55,7 @@ async function main() {
   );
 
   // 分钟级缓存：同一标的的重叠持仓只拉一次
-  const cache = new Map<string, Map<number, Candle>>();
+  const cache = new Map<string, Map<number, CandlePoint>>();
   const cacheOf = (instId: string) => {
     let m = cache.get(instId);
     if (!m) {
@@ -65,7 +65,7 @@ async function main() {
     return m;
   };
 
-  async function candlesForRange(instId: string, startMs: number, endMs: number): Promise<Candle[]> {
+  async function candlesForRange(instId: string, startMs: number, endMs: number): Promise<CandlePoint[]> {
     const c = cacheOf(instId);
     const s0 = alignStart(startMs);
     const e0 = alignEnd(endMs);
@@ -87,10 +87,10 @@ async function main() {
       }
       for (const [s, e] of ranges) {
         const page = await fetchCandles1m(instId, s, e);
-        for (const cd of page) c.set(cd.ts, cd);
+        for (const cd of page) c.set(cd.time * 1000, cd);
       }
     }
-    const out: Candle[] = [];
+    const out: CandlePoint[] = [];
     for (const ts of slots) {
       const cd = c.get(ts);
       if (cd) out.push(cd);

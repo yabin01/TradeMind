@@ -16,6 +16,7 @@ import {
   trades as tradesTable,
 } from '@trademind/database';
 import { computeCalendar } from '@trademind/analytics';
+import { getTradeCandles, type TradeCandlesPayload } from '../market/candles';
 import { createTradeRepo, type TradePatch } from '../common/trades-repo';
 import { parseFilter, workspaceOf } from '../common/workspace';
 
@@ -59,6 +60,30 @@ export class TradesService {
     const all = await this.repo.loadTrades(workspaceId);
     const { buildTradeDetail } = await import('@trademind/analytics');
     return { trade: t, detail: buildTradeDetail(t, all) };
+  }
+
+  /**
+   * 单笔交易持仓期间的行情 K 线（开仓点 / 平仓点对照图）。
+   *
+   * 走交易所免签名的公开行情接口，不碰用户的 API Key。
+   * 任何失败都返回 available:false + 具体原因（不伪造数据），前端据此显示说明而不是空白图。
+   */
+  async getCandles(workspaceId: string, id: string, bar?: string): Promise<TradeCandlesPayload> {
+    const t = await this.get(workspaceId, id);
+    if (!t) {
+      return { available: false, venue: '', reason: '未找到该交易', hint: null };
+    }
+    return getTradeCandles(
+      {
+        exchange: t.exchange,
+        symbol: t.symbol,
+        entryPrice: t.entryPrice,
+        exitPrice: t.exitPrice,
+        openTime: new Date(t.openTime),
+        closeTime: t.closeTime ? new Date(t.closeTime) : null,
+      },
+      bar,
+    );
   }
 
   /**
@@ -352,6 +377,12 @@ export class TradesController {
   @Get(':id/detail')
   detail(@Req() req: Request, @Param('id') id: string) {
     return this.service.getDetail(workspaceOf(req), id);
+  }
+
+  /** 持仓期间行情 K 线（开仓/平仓标注）；bar 缺省时按持仓时长自动选择 */
+  @Get(':id/candles')
+  candles(@Req() req: Request, @Param('id') id: string, @Query('bar') bar?: string) {
+    return this.service.getCandles(workspaceOf(req), id, bar);
   }
 
   @Post('import')

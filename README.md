@@ -18,7 +18,7 @@
 
 - **Monorepo**：pnpm workspaces + Turborepo
 - **API**：NestJS（`apps/api`，端口 4000）
-- **Web**：Next.js 14 + Tailwind + TanStack Query + Zustand + Recharts（`apps/web`，端口 3000，默认 Dark Mode）
+- **Web**：Next.js 14 + Tailwind + TanStack Query + Zustand + Recharts + TradingView Lightweight Charts（`apps/web`，端口 3000，默认 Dark Mode）
 - **数据库**：PostgreSQL 16（TimescaleDB 镜像）+ Drizzle ORM
 - **队列**：Redis 7 + BullMQ（`workers/*`）
 - **核心包**：`packages/trading-core`（领域模型/CSV 归一化/去重）、`packages/analytics`（纯函数分析引擎，已通过 45 项自测）、`packages/database`（Schema/Seed）
@@ -64,6 +64,7 @@ MaxDD / HWM / CurrentDD / DD Duration / Recovery Time 详见 drawdown.ts
 
 - `GET /dashboard?filter=` — KPI + Equity + Daily + 全维度聚合（一站式）
 - `GET /trades` · `GET /trades/:id` · `POST /trades/import`（CSV）· `POST /trades`（手动）· `DELETE /trades/:id`
+- `GET /trades/:id/candles?bar=` — 持仓期间 K 线（开仓/平仓点标注，用于单笔复盘）
 - `GET /analytics` · `GET /analytics/time?kind=hour|dayOfWeek|session|duration` · `GET /analytics/symbol` · `GET /analytics/strategy`
 - `GET /calendar` · `GET /strategies` · `GET /taxonomy`
 - `GET /connections` · `POST /connections` · `POST /connections/:id/sync` · `DELETE /connections/:id`
@@ -97,9 +98,10 @@ docker/             PG(TimescaleDB) + Redis compose
 ## 路线图
 
 - ✅ Phase 1（当前）：数据模型 → 分析引擎 → Dashboard → CSV 导入
+- ✅ 单笔复盘图：交易详情页的持仓期间 K 线（Lightweight Charts，开仓/平仓点标注 + 成交量 + 周期切换）
 - 🔜 Phase 2：Binance/Bybit/OKX/Hyperliquid 连接器、实时同步、JWT 鉴权
 - 🔜 Phase 3：LLM AI Coach（规则引擎已预置事实层与 Citation 结构）
-- 🔜 Phase 4：Trade Replay（Lightweight Charts）
+- 🔜 Phase 4：Trade Replay（逐笔回放；单笔 K 线视图已随 Phase 1 一并落地）
 - 🔜 Phase 5：ChanLun Analytics（schema 已预留 `chanlun` 字段）
 
 ## 许可证

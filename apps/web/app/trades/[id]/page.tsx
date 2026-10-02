@@ -7,6 +7,7 @@ import { api, patchTrade, getFacets } from '../../../lib/api';
 import { fmtDuration, fmtTs, fmtUsd, pnlClass } from '../../../lib/format';
 import { Section } from '../../../components/ui';
 import { TagChipsInput } from '../../../components/tag-chips-input';
+import { TradeCandleChart } from '../../../components/trade-candle-chart';
 import { ENTRY_REASON_PRESETS, EXIT_REASON_PRESETS, GENERAL_TAG_PRESETS } from '../../../lib/reason-presets';
 import type { UnifiedTrade } from '@trademind/trading-core';
 
@@ -188,6 +189,9 @@ export default function TradeDetailPage() {
           成本是毛利的 {(d.costRatioOfGross as number * 100).toFixed(0)}%。持仓 {mins(d.holdingMinutes)} 里手续费吃掉了大部分空间。
         </div>
       ) : null}
+
+      {/* 持仓期间行情：开仓点 / 平仓点对照（交易所公开 K 线，浏览器本地渲染） */}
+      <TradeCandleChart tradeId={t.id} direction={d.direction} netPnl={d.netPnl} />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Section title="价格与规模">
